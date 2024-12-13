@@ -1,0 +1,6 @@
+spring:
+    application:
+        name: high-concurrent-java-server
+    threads:
+        virtual:
+            enabled: true
