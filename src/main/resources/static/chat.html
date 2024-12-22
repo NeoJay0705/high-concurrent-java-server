@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Example</title>
+</head>
+
+<body>
+    <h1>WebSocket Chat</h1>
+
+    <!-- Chatroom Selector -->
+    <label for="chatroomSelect">Select Chatroom:</label>
+    <select id="chatroomSelect">
+        <option value="chatroom1">Chatroom 1</option>
+        <option value="chatroom2">Chatroom 2</option>
+    </select>
+
+    <input type="text" id="messageInput" placeholder="Enter message">
+    <button id="sendButton">Send</button>
+    <div id="messages"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.5.2/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            console.log("Start");
+            const socket = new SockJS('http://localhost:8080/ws');
+            const stompClient = Stomp.over(socket);
+            let currentSubscription = null; // Track the current subscription
+            let currentChatroom = "chatroom1"; // Default chatroom
+
+            const messagesDiv = document.getElementById("messages");
+            const chatroomSelect = document.getElementById("chatroomSelect");
+            const sendButton = document.getElementById("sendButton");
+            const messageInput = document.getElementById("messageInput");
+
+            console.log("Connecting");
+            stompClient.connect({}, () => {
+                console.log("Connected");
+
+                // Function to subscribe to a chatroom
+                const subscribeToChatroom = (chatroom) => {
+                    // Unsubscribe from the current subscription if exists
+                    if (currentSubscription) {
+                        currentSubscription.unsubscribe();
+                    }
+
+                    // Subscribe to the new chatroom
+                    currentSubscription = stompClient.subscribe(`/topic/${chatroom}`, (message) => {
+                        const msgContent = JSON.parse(message.body).content;
+                        const messageElement = document.createElement("div");
+                        messageElement.textContent = `[${chatroom}] ${msgContent}`;
+                        messagesDiv.prepend(messageElement);
+                        console.log("Received: ", JSON.parse(message.body));
+                    });
+                };
+
+                // Initial subscription to default chatroom
+                subscribeToChatroom(currentChatroom);
+
+                // Handle chatroom switch
+                chatroomSelect.addEventListener("change", (event) => {
+                    currentChatroom = event.target.value;
+                    messagesDiv.innerHTML = ""; // Clear messages when switching rooms
+                    subscribeToChatroom(currentChatroom);
+                });
+
+                // Subscribe to the /topic/messages topic
+                stompClient.subscribe("/topic/messages", (message) => {
+                    const receivedMessage = JSON.parse(message.body).content;
+                    console.log("Received: ", JSON.parse(message.body));
+                    const messageElement = document.createElement("div");
+                    messageElement.textContent = receivedMessage;
+                    // Add the new message as the first child of messagesDiv
+                    messagesDiv.prepend(messageElement);
+                });
+
+                // Handle Send Button Click
+                sendButton.addEventListener("click", () => {
+                    const messageContent = messageInput.value;
+                    if (messageContent.trim() !== "") {
+                        // Send the message to the /app/message endpoint
+                        stompClient.send("/app/message", {}, JSON.stringify(messageContent));
+                        messageInput.value = ""; // Clear the input field
+                    }
+                });
+            });
+
+            stompClient.debug = null; // Disable logging in production
+        });
+    </script>
+</body>
+
+</html>

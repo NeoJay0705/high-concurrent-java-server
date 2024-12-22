@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_package = "net.n.example.high_concurrent_java_server.draft.gPRC.proto";
+option java_outer_classname = "GreetingProto";
+
+// The greeting service definition.
+service GreetingService {
+  // Sends a greeting.
+  rpc SayHello (HelloRequest) returns (HelloReply);
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greeting.
+message HelloReply {
+  string message = 1;
+}
+
+// protoc --plugin=protoc-gen-grpc-java=/opt/homebrew/bin/protoc-gen-grpc-java --grpc-java_out=src/main/java --proto_path=proto --java_out=src/main/java proto/hello.proto

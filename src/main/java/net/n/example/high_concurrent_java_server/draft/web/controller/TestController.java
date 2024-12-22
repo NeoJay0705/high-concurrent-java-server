@@ -1,5 +1,6 @@
-package net.n.example.high_concurrent_java_server.draft.controller;
+package net.n.example.high_concurrent_java_server.draft.web.controller;
 
+import java.security.Principal;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import org.springframework.scheduling.annotation.Async;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import net.n.example.high_concurrent_java_server.draft.web.authentication.CustomPrincipal;
+import net.n.example.high_concurrent_java_server.draft.web.authorization.RequiresAuthority;
 
 
 @RestController
@@ -38,6 +41,43 @@ public class TestController {
         return "OK";
     }
 
+    @GetMapping("auth")
+    public String auth(Principal principal) {
+        CustomPrincipal p = (CustomPrincipal) principal;
+        return p.getName();
+    }
+
+    @GetMapping("authorize")
+    @RequiresAuthority({"USER"})
+    public String authorize(Principal principal) {
+        CustomPrincipal p = (CustomPrincipal) principal;
+        return p.getName();
+    }
+
+    @GetMapping("/lag1")
+    public String lag1() throws InterruptedException {
+        Thread.sleep(1000);
+
+        System.out.println(System.currentTimeMillis());
+        return "lag1";
+    }
+
+    @GetMapping("/lag2")
+    public String lag2() throws InterruptedException {
+        Thread.sleep(1000);
+        return "lag2";
+    }
+
+    @GetMapping("/lag3")
+    public String lag3() {
+        return "lag1";
+    }
+
+    @GetMapping("/lag_long")
+    public String lagLong() throws InterruptedException {
+        Thread.sleep(1000 * 60 * 20);
+        return "lag_long";
+    }
 
     @Component
     public static class Aynscer {
