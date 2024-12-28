@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>WebSocket Demo</title>
+</head>
+
+<body>
+
+    <h1>WebSocket Chat Demo</h1>
+
+    <div>
+        <label>Your name: </label>
+        <input type="text" id="username" value="Alice" />
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <hr />
+
+    <!-- Broadcast -->
+    <div>
+        <h3>Broadcast</h3>
+        <input type="text" id="broadcastMsg" placeholder="Message..." />
+        <button onclick="sendBroadcast()">Send Broadcast</button>
+    </div>
+
+    <!-- Request/Response -->
+    <div>
+        <h3>Request/Response</h3>
+        <input type="text" id="requestMsg" placeholder="Message..." />
+        <button onclick="sendRequestResponse()">Send Request</button>
+        <p><b>Response:</b> <span id="responseText"></span></p>
+    </div>
+
+    <!-- Chatroom -->
+    <div>
+        <h3>Chatroom</h3>
+        <label>Chatroom Name: </label>
+        <input type="text" id="chatroomName" value="room1" />
+        <br />
+        <label>Message: </label>
+        <input type="text" id="chatroomMsg" placeholder="Message..." />
+        <button onclick="sendChatroom()">Send Chatroom Message</button>
+        <p><b>Chatroom Feed:</b></p>
+        <div id="chatroomFeed" style="border: 1px solid #888; padding: 5px;"></div>
+    </div>
+
+    <!-- Server-Side Send (Direct) -->
+    <div>
+        <h3>Server-Side Send (Direct)</h3>
+        <label>Target user:</label>
+        <input type="text" id="targetUser" value="Bob" />
+        <br />
+        <label>Message:</label>
+        <input type="text" id="serverSideSendMsg" placeholder="Message..." />
+        <button onclick="sendServerSideMsg()">Push to Another User</button>
+        <p><b>Private Feed:</b></p>
+        <div id="privateFeed" style="border: 1px solid #888; padding: 5px;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <script>
+        let stompClient = null;
+
+        function connect() {
+            const username = document.getElementById('username').value;
+
+            const socket = new SockJS(`/ws?token=${username}`);
+            stompClient = Stomp.over(socket);
+
+            // Example: pass an auth header or login to STOMP if needed
+            // stompClient.connect({token: 'someAuthToken'}, onConnected, onError);
+            stompClient.connect({}, onConnected, onError);
+        }
+
+        function onConnected(frame) {
+            console.log('Connected: ' + frame);
+
+            // 1. Subscribe to broadcast
+            stompClient.subscribe('/topic/broadcast', function (message) {
+                const msgBody = JSON.parse(message.body);
+                console.log('Broadcast received:', msgBody);
+                alert('Broadcast => ' + msgBody.from + ': ' + msgBody.content);
+            });
+
+            // 2. Subscribe to request/response queue
+            stompClient.subscribe('/user/queue/response', function (message) {
+                const msgBody = JSON.parse(message.body);
+                document.getElementById('responseText').innerText = msgBody.content;
+            });
+
+            // 3. Subscribe to chatroom (dynamic room name)
+            const roomName = document.getElementById('chatroomName').value;
+            stompClient.subscribe('/topic/chatroom/' + roomName, function (message) {
+                const msgBody = JSON.parse(message.body);
+                const feed = document.getElementById('chatroomFeed');
+                feed.innerHTML += '<div><b>' + msgBody.from + ':</b> ' + msgBody.content + '</div>';
+            });
+
+            // 4. Subscribe to private queue for direct messages (serverSideSend)
+            stompClient.subscribe('/user/queue/private', function (message) {
+                const msgBody = JSON.parse(message.body);
+                const feed = document.getElementById('privateFeed');
+                feed.innerHTML += '<div><b>Private from ' + msgBody.from + ':</b> ' + msgBody.content + '</div>';
+            });
+
+            console.log('Subscribed to all endpoints.');
+        }
+
+        function onError(error) {
+            console.error('Could not connect to WebSocket server. Error:', error);
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            console.log('Disconnected');
+        }
+
+        // 1. Send broadcast
+        function sendBroadcast() {
+            const msgInput = document.getElementById('broadcastMsg');
+            const username = document.getElementById('username').value;
+            const message = {
+                from: username,
+                content: msgInput.value
+            };
+            stompClient.send("/app/broadcast", {}, JSON.stringify(message));
+            msgInput.value = '';
+        }
+
+        // 2. Send request -> get response
+        function sendRequestResponse() {
+            const msgInput = document.getElementById('requestMsg');
+            const username = document.getElementById('username').value;
+            const message = {
+                from: username,
+                content: msgInput.value
+            };
+            stompClient.send("/app/requestResponse", {}, JSON.stringify(message));
+            msgInput.value = '';
+        }
+
+        // 3. Send chatroom message
+        function sendChatroom() {
+            const chatroomMsg = document.getElementById('chatroomMsg');
+            const roomName = document.getElementById('chatroomName').value;
+            const username = document.getElementById('username').value;
+
+            const message = {
+                from: username,
+                content: chatroomMsg.value
+            };
+            stompClient.send("/app/chatroom/" + roomName, {}, JSON.stringify(message));
+            chatroomMsg.value = '';
+        }
+
+        // 4. Let server push to user
+        function sendServerSideMsg() {
+            const msgInput = document.getElementById('serverSideSendMsg');
+            const targetUser = document.getElementById('targetUser').value;
+            const username = document.getElementById('username').value;
+
+            const message = {
+                from: username,
+                to: targetUser,
+                content: msgInput.value
+            };
+            stompClient.send("/app/serverSideSend", {}, JSON.stringify(message));
+            msgInput.value = '';
+        }
+    </script>
+
+</body>
+
+</html>
