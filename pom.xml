@@ -132,6 +132,13 @@
 			<version>2.0.2</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/org.springframework.kafka/spring-kafka -->
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+			<version>3.2.6</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -159,6 +166,40 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<mainClass>
+								net.n.example.high_concurrent_java_server.HighConcurrentJavaServerApplication</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.0.0</version> <!-- Ensure using a recent version -->
+			</plugin>
+
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<jvmArguments>
+						-Dcom.sun.management.jmxremote=true
+						-Dcom.sun.management.jmxremote.port=1099
+						-Dcom.sun.management.jmxremote.authenticate=false
+						-Dcom.sun.management.jmxremote.ssl=false
+					</jvmArguments>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
