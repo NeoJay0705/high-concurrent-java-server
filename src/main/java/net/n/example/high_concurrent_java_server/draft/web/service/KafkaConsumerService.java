@@ -34,9 +34,6 @@ public class KafkaConsumerService {
         int nextInt = random.nextInt(100);
         for (ConsumerRecord<String, SSMessage> record : records) {
             try {
-                if (true) {
-                    throw new RuntimeException("test");
-                }
                 System.out.println(Thread.currentThread().getName() + nextInt
                         + " - Processing record: " + record.value());
             } catch (Exception e) {

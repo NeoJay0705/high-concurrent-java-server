@@ -8,6 +8,11 @@
 <body>
     <h1>WebSocket Chat</h1>
 
+    <!-- User ID Selector -->
+    <label for="userIdInput">Set User ID:</label>
+    <input type="text" id="userIdInput" placeholder="Enter User ID">
+    <button id="setUserIdButton">Set User ID</button>
+
     <!-- Chatroom Selector -->
     <label for="chatroomSelect">Select Chatroom:</label>
     <select id="chatroomSelect">
@@ -26,17 +31,41 @@
             console.log("Start");
             const socket = new SockJS('http://localhost:8080/ws');
             const stompClient = Stomp.over(socket);
-            let currentSubscription = null; // Track the current subscription
+
+            let currentSubscription = null; // Track the current chatroom subscription
+            let currentUserSubscription = null; // Track the current user subscription
+
             let currentChatroom = "chatroom1"; // Default chatroom
+            let currentUserId = null; // Default user_id is null
 
             const messagesDiv = document.getElementById("messages");
             const chatroomSelect = document.getElementById("chatroomSelect");
             const sendButton = document.getElementById("sendButton");
             const messageInput = document.getElementById("messageInput");
+            const userIdInput = document.getElementById("userIdInput");
+            const setUserIdButton = document.getElementById("setUserIdButton");
+
+            // Override the debug function to log all incoming messages
+            stompClient.debug = function (str) {
+                // Log the debug string, which contains information about what the client is doing
+                console.log('STOMP Debug:', str);
+
+                // Optionally filter to only log incoming messages
+                if (str.startsWith("<<<")) {  // Incoming messages are prefixed with '<<<' in the debug output
+                    console.log("Incoming STOMP message:", str);
+                }
+            };
 
             console.log("Connecting");
             stompClient.connect({}, () => {
                 console.log("Connected");
+                var url = stompClient.ws._transport.url;
+                console.log(url);
+                url = url.replace(
+                    "ws://localhost:8080/ws/", "");
+                url = url.replace("/websocket", "");
+                url = url.replace(/^[0-9]+\//, "");
+                console.log("Your current session is: " + url);
 
                 // Function to subscribe to a chatroom
                 const subscribeToChatroom = (chatroom) => {
@@ -55,6 +84,24 @@
                     });
                 };
 
+                // Function to subscribe to user-specific messages
+                const subscribeToUser = (userId) => {
+                    // Unsubscribe from the current user subscription if exists
+                    if (currentUserSubscription) {
+                        currentUserSubscription.unsubscribe();
+                        console.log("Unsubscribed from user-specific topic");
+                    }
+                    console.log(`/user/${userId}/topic_chatroom`);
+                    // Subscribe to the new user-specific topic
+                    currentUserSubscription = stompClient.subscribe(`/user/queue/topic_chatroom-1`, (message) => { // "/user/2/topic_chatroom"
+                        const msgContent = JSON.parse(message.body).content;
+                        const messageElement = document.createElement("div");
+                        messageElement.textContent = `[User ${userId}] ${msgContent}`;
+                        messagesDiv.prepend(messageElement);
+                        console.log("User-Specific Received: ", JSON.parse(message.body));
+                    });
+                };
+
                 // Initial subscription to default chatroom
                 subscribeToChatroom(currentChatroom);
 
@@ -65,14 +112,15 @@
                     subscribeToChatroom(currentChatroom);
                 });
 
-                // Subscribe to the /topic/messages topic
-                stompClient.subscribe("/topic/messages", (message) => {
-                    const receivedMessage = JSON.parse(message.body).content;
-                    console.log("Received: ", JSON.parse(message.body));
-                    const messageElement = document.createElement("div");
-                    messageElement.textContent = receivedMessage;
-                    // Add the new message as the first child of messagesDiv
-                    messagesDiv.prepend(messageElement);
+                // Handle user ID set
+                setUserIdButton.addEventListener("click", () => {
+                    const userId = userIdInput.value.trim();
+                    if (userId) {
+                        currentUserId = userId;
+                        messagesDiv.innerHTML = ""; // Clear messages when switching user subscriptions
+                        subscribeToUser(currentUserId);
+                        console.log(`Subscribed to user-specific topic for user ID: ${currentUserId}`);
+                    }
                 });
 
                 // Handle Send Button Click
@@ -80,7 +128,12 @@
                     const messageContent = messageInput.value;
                     if (messageContent.trim() !== "") {
                         // Send the message to the /app/message endpoint
-                        stompClient.send("/app/message", {}, JSON.stringify(messageContent));
+                        const payload = {
+                            userId: currentUserId || "default", // Include user ID if set
+                            chatroom: currentChatroom,
+                            content: messageContent
+                        };
+                        stompClient.send("/app/message", {}, JSON.stringify(payload));
                         messageInput.value = ""; // Clear the input field
                     }
                 });

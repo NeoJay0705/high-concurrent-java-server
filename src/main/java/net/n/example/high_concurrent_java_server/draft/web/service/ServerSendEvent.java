@@ -1,7 +1,6 @@
 package net.n.example.high_concurrent_java_server.draft.web.service;
 
 import java.time.OffsetDateTime;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.Data;
 
@@ -19,7 +18,7 @@ public class ServerSendEvent {
     }
 
     // Send a message to all clients every 5 seconds
-    @Scheduled(fixedRate = 5000)
+    // @Scheduled(fixedRate = 5000)
     public void sendPeriodicUpdates() {
         SSMessage message = new SSMessage();
         message.setContent("Server update at " + OffsetDateTime.now());
