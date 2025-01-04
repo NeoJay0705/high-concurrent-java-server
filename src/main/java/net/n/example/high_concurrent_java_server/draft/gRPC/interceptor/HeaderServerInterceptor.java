@@ -11,31 +11,23 @@ import io.grpc.ServerInterceptor;
 @Component
 public class HeaderServerInterceptor implements ServerInterceptor {
 
+        public static final Context.Key<Metadata> METADATA_KEY = Context.key("metadata");
+
+        public static final Metadata.Key<String> CUSTOM_KEY =
+                        Metadata.Key.of("custom-header", Metadata.ASCII_STRING_MARSHALLER);
+
         @Override
         public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
                         Metadata headers, ServerCallHandler<ReqT, RespT> next) {
 
                 // Extract metadata
-                Metadata.Key<String> userAgentKey =
-                                Metadata.Key.of("user-agent", Metadata.ASCII_STRING_MARSHALLER);
-                Metadata.Key<String> customKey =
-                                Metadata.Key.of("custom-header", Metadata.ASCII_STRING_MARSHALLER);
+                String customHeaderValue = headers.get(CUSTOM_KEY);
+                System.out.println("Received Custom Header: " + customHeaderValue);
 
-                String userAgent = headers.get(userAgentKey);
-                String customHeaderValue = headers.get(customKey);
-
-                // System.out.println("Received User-Agent: " + userAgent);
-                // System.out.println("Received Custom Header: " + customHeaderValue);
-
-                // // Proceed with the call
-                // return next.startCall(call, headers);
-                // System.out.println("Current Context in service: " + Context.current());
-
-                Context context = Context.current().withValue(Context.key("custom-header"),
-                                customHeaderValue);
+                Context ctx = Context.current() // from thread local -> Node -> METADATA_KEY, value
+                                .withValue(METADATA_KEY, headers);
 
                 // Pass the context along the call chain
-                // TODO
-                return Contexts.interceptCall(context, call, headers, next);
+                return Contexts.interceptCall(ctx, call, headers, next);
         }
 }

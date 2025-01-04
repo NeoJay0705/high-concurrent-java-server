@@ -1,5 +1,6 @@
 package net.n.example.high_concurrent_java_server.draft.gRPC.interceptor;
 
+import java.util.Random;
 import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
 import io.grpc.ForwardingClientCall;
@@ -9,6 +10,8 @@ import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 
 public class HeaderClientInterceptor implements ClientInterceptor {
+
+    private final Random random = new Random();
 
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
@@ -25,7 +28,7 @@ public class HeaderClientInterceptor implements ClientInterceptor {
                 Metadata.Key<String> tokenKey =
                         Metadata.Key.of("authorization-token", Metadata.ASCII_STRING_MARSHALLER);
 
-                headers.put(customKey, "my-custom-value");
+                headers.put(customKey, random.nextInt(1000) + "");
                 headers.put(tokenKey, "Bearer my-token");
 
                 System.out.println("Added headers: " + headers);
